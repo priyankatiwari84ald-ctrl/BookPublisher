@@ -1,0 +1,60 @@
+
+name: Build Book Publisher APK
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'BookPublisher-Android-MVP.zip'
+      - '.github/workflows/build.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download project from repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android SDK packages
+        run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
+
+      - name: Install Gradle
+        run: |
+          curl -L --fail \
+            https://services.gradle.org/distributions/gradle-8.9-bin.zip \
+            -o gradle.zip
+          unzip -q gradle.zip
+
+      - name: Extract Android project
+        run: |
+          unzip -q BookPublisher-Android-MVP.zip -d extracted
+          test -f extracted/BookPublisher/app/build.gradle.kts
+
+      - name: Build debug APK
+        run: |
+          gradle-8.9/bin/gradle \
+            -p extracted/BookPublisher \
+            assembleDebug \
+            --no-daemon
+
+      - name: Save APK for download
+        uses: actions/upload-artifact@v4
+        with:
+          name: BookPublisher-APK
+          path: extracted/BookPublisher/app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
+          retention-days: 7
+          
